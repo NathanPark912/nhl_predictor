@@ -3,7 +3,7 @@ import pandas as pd
 import datetime
 def get_abv(links):
     abvs = []
-    team_url = "https://statsapi.web.nhl.com"
+    team_url = "https://api-web.nhle.com/v1/"
     for link in links:
         response = requests.get(team_url + link, params={"Content-Type": "application/json"})
         data = response.json()
@@ -12,26 +12,20 @@ def get_abv(links):
     return abvs
 
 def create_schedule():
+    matchups = []
+
     todays_date = datetime.date.today()
     todays_date = todays_date.strftime('%Y-%m-%d')
-    response = requests.get("https://statsapi.web.nhl.com/api/v1/schedule?startDate=" + todays_date + "&endDate=" + todays_date, params={"Content-Type": "application/json"})
+    response = requests.get("https://api-web.nhle.com/v1/schedule/now", params={"Content-Type": "application/json"})
     data = response.json()
-    game_keys = []
-    for date in data["dates"]:
-        for game in date["games"]:
-            game_keys.append(game["gamePk"])
 
-    away_team_link = []
-    home_team_link= []
-    for date in data['dates']:
-        for game in date["games"]:
-            away_team_link.append(game['teams']['away']['team']['link'])
-            home_team_link.append(game['teams']['home']['team']['link'])
-    away_abv = get_abv(away_team_link)
-    home_abv = get_abv(home_team_link)
-    schedule = pd.DataFrame()
-    schedule["AwayTicker"] = away_abv
-    schedule["HomeTicker"] = home_abv
+    for game in data["gameWeek"][0]["games"]:
+        matchup = {
+            "AwayTicker": game["awayTeam"]["abbrev"],
+            "HomeTicker": game["homeTeam"]["abbrev"]
+        }
+        matchups.append(matchup)
+    schedule = pd.DataFrame(matchups)
     return schedule
 
 import json
@@ -39,7 +33,7 @@ from io import StringIO
 
 from scipy.stats import poisson
 
-response = requests.get("https://moneypuck.com/moneypuck/playerData/seasonSummary/2022/regular/skaters.csv")
+response = requests.get("https://moneypuck.com/moneypuck/playerData/seasonSummary/2023/regular/skaters.csv")
 s=str(response.content,'utf-8')
 
 data = StringIO(s) 
@@ -132,7 +126,7 @@ def run_game(home_team, away_team,home_goalie,away_goalie,style):
   return winner
 
 
-response = requests.get("https://moneypuck.com/moneypuck/playerData/seasonSummary/2022/regular/goalies.csv")
+response = requests.get("https://moneypuck.com/moneypuck/playerData/seasonSummary/2023/regular/goalies.csv")
 s=str(response.content,'utf-8')
 
 data = StringIO(s) 
@@ -168,8 +162,7 @@ def goalie_combinations(team1, team2):
 
   return combos
 
-from pandas.core.internals.array_manager import NullArrayProxy
-from IPython.display import HTML
+
 def run_todays_games():
     todays_games = create_schedule()
     todays_date = datetime.date.today()
@@ -210,7 +203,7 @@ final_df = run_todays_games()
 
 
 #########################################adding in player props
-response = requests.get("https://moneypuck.com/moneypuck/playerData/seasonSummary/2022/regular/teams.csv")
+response = requests.get("https://moneypuck.com/moneypuck/playerData/seasonSummary/2023/regular/teams.csv")
 s=str(response.content,'utf-8')
 
 data = StringIO(s) 
@@ -238,9 +231,12 @@ def player_props(team1,team2):
   tm2_shots_allowed = team_df.loc[team_df['team'] == team2, 'shots_against_pg'].iloc[0]
   tm1_df['shot_share'] = tm1_df['shot_portion'] * tm2_shots_allowed
   tm2_df['shot_share'] = tm2_df['shot_portion'] * tm1_shots_allowed
+  print(tm1_df['shot_share'])
+  print(tm2_shots_allowed)
   tm1_df['difference'] = tm1_df['shot_share'] - tm1_df['SOG per game']
   tm2_df['difference'] = tm2_df['shot_share'] - tm2_df['SOG per game']
-
+  print(tm1_df['SOG per game'])
+  print(tm1_df['difference'] )
   tm1_df = tm1_df[['team','name_x','SOG per game','shot_share','difference']]
   tm2_df = tm2_df[['team','name_x','SOG per game','shot_share','difference']]
 
@@ -308,15 +304,15 @@ def send_emails(htmlcode):
     from email.message import EmailMessage
     #this works for emailing it out
     email = 'nathanpark912@gmail.com'
-    password = 'hahahahahhahahahha nope'
+    password = 'You thought'
 
     from email.mime.multipart import MIMEMultipart #pip install email-to
     from email.mime.text import MIMEText
     from email.mime.image import MIMEImage
     from email.mime.application import MIMEApplication
 
-    contacts = ['parknathan12@yahoo.com','nathan.park@drake.edu','parknick98@gmail.com','jakeraymer@gmail.com', 'danobs29@gmail.com','brettlee44@comcast.net']
-
+    contacts = ['parknathan12@yahoo.com','parknick98@gmail.com','jakeraymer@gmail.com', 'danobs29@gmail.com','brettlee44@comcast.net']
+    #contacts = ['parknathan12@yahoo.com']
     msg = EmailMessage()
     msg['Subject'] = 'Todays Picks'
     msg['From'] = email
